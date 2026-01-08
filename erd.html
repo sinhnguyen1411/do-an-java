@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>E-Learning LMS ERD (Relational / Physical)</title>
+  <style>
+    :root{
+      --bg:#f3f4f6;
+      --ink:#111827;
+      --muted:#6b7280;
+      --card:#ffffff;
+      --border:#d1d5db;
+      --line:#374151;
+      --shadow:0 10px 18px rgba(17,24,39,.08);
+      --header:#0f172a;
+      --row:#eef2ff;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--ink);
+    }
+    .page{
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 22px 22px 40px;
+    }
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:16px;
+      margin-bottom:14px;
+    }
+    h1{margin:0;font-size:22px;font-weight:800}
+    .subtitle{margin-top:6px;color:var(--muted);font-size:13px}
+
+    .legend{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 14px;
+      box-shadow:var(--shadow);
+      min-width:260px;
+    }
+    .legend h3{
+      margin:0 0 6px;
+      font-size:12px;
+      text-transform:uppercase;
+      color:var(--muted);
+      letter-spacing:.5px;
+    }
+    .legend-row{font-size:12px;margin-top:6px;display:flex;align-items:center;gap:8px}
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:10px;
+      font-weight:800;
+      border-radius:7px;
+      padding:2px 7px;
+      border:1px solid var(--border);
+      background:#eef2f7;
+      color:#111827;
+      line-height:1.2;
+    }
+    .badge.pk{background:#e0f2fe;border-color:#93c5fd}
+    .badge.fk{background:#ecfdf5;border-color:#86efac}
+    .badge.uq{background:#fff7ed;border-color:#fdba74}
+    .badge.nn{background:#f5f3ff;border-color:#c4b5fd}
+
+    .diagram{
+      position:relative;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:18px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    /* Layout: fixed grid for desktop (print ready) */
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap:18px;
+      position:relative;
+      z-index:2;
+    }
+
+    .entity{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 4px 10px rgba(0,0,0,.05);
+      min-height:160px;
+    }
+    .entity .title{
+      background:var(--header);
+      color:#fff;
+      font-weight:800;
+      font-size:13px;
+      padding:8px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+    }
+    .entity .title small{
+      font-weight:600;
+      opacity:.85;
+      font-size:11px;
+    }
+
+    .cols{
+      width:100%;
+      border-collapse:collapse;
+      font-size:12px;
+    }
+    .cols thead th{
+      text-align:left;
+      font-size:11px;
+      color:#374151;
+      padding:8px 10px;
+      border-bottom:1px solid #e5e7eb;
+      background:#f8fafc;
+      position:sticky;
+      top:0;
+      z-index:1;
+    }
+    .cols td{
+      padding:7px 10px;
+      border-bottom:1px dotted #e5e7eb;
+      vertical-align:top;
+    }
+    .cols tr:last-child td{border-bottom:none}
+    .c-name{font-weight:700; width:34%}
+    .c-type{color:var(--muted);font-size:11px; width:22%}
+    .c-tags{width:22%}
+    .c-notes{color:var(--muted);font-size:11px}
+
+    .tags{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      align-items:center;
+    }
+
+    /* SVG overlay for connectors */
+    .svg-layer{
+      position:absolute;
+      inset:0;
+      z-index:1;
+      pointer-events:none;
+    }
+    .edge{
+      stroke:var(--line);
+      stroke-width:1.4;
+      fill:none;
+    }
+    .edge-shadow{
+      stroke:#ffffff;
+      stroke-width:3.8;
+      fill:none;
+      opacity:.9;
+    }
+    .edge-label{
+      font-size:10px;
+      font-weight:800;
+      fill:#111827;
+      paint-order: stroke fill;
+      stroke:#ffffff;
+      stroke-width:3px;
+    }
+    .fk-label{
+      font-size:10px;
+      font-weight:700;
+      fill:#111827;
+      paint-order: stroke fill;
+      stroke:#ffffff;
+      stroke-width:3px;
+      opacity:.95;
+    }
+
+    /* Desktop placement (print-ready) */
+    #users{grid-column:1 / span 3; grid-row:1 / span 3;}
+    #courses{grid-column:4 / span 4; grid-row:1;}
+    #lessons{grid-column:4 / span 4; grid-row:2;}
+    #enrollments{grid-column:4 / span 3; grid-row:3;}
+    #lesson_progress{grid-column:7 / span 3; grid-row:3;}
+    #qa_questions{grid-column:8 / span 3; grid-row:1 / span 2;}
+    #qa_answers{grid-column:11 / span 2; grid-row:1 / span 2;}
+
+    /* Make tables scroll nicely if needed */
+    .entity .body{
+      max-height: 250px;
+      overflow:auto;
+    }
+
+    /* Responsive: collapse to 2 columns and hide lines */
+    @media (max-width: 1200px){
+      .grid{grid-template-columns: repeat(2, minmax(280px, 1fr));}
+      #users,#courses,#lessons,#enrollments,#lesson_progress,#qa_questions,#qa_answers{
+        grid-column:auto; grid-row:auto;
+      }
+      .svg-layer{display:none;}
+      .entity .body{max-height:none;}
+    }
+
+    /* Print */
+    @media print{
+      body{background:#fff}
+      .diagram{box-shadow:none}
+      .entity{box-shadow:none}
+      .legend{box-shadow:none}
+      .edge-shadow{display:none}
+      .edge{stroke:#000}
+      .edge-label,.fk-label{stroke:#fff; stroke-width:2px;}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div>
+      <h1>E-Learning LMS ERD</h1>
+      <div class="subtitle">Relational / Physical ERD (MySQL-ready) — FK in tables, orthogonal connectors (print-ready)</div>
+    </div>
+    <div class="legend">
+      <h3>Legend</h3>
+      <div class="legend-row"><span class="badge pk">PK</span> Primary Key</div>
+      <div class="legend-row"><span class="badge fk">FK</span> Foreign Key</div>
+      <div class="legend-row"><span class="badge uq">UQ</span> Unique</div>
+      <div class="legend-row"><span class="badge nn">NN</span> Not Null</div>
+    </div>
+  </header>
+
+  <div class="diagram" id="diagram">
+    <svg class="svg-layer" id="svg"></svg>
+
+    <div class="grid">
+      <!-- USERS -->
+      <div class="entity" id="users">
+        <div class="title">users <small>(roles: ADMIN/INSTRUCTOR/STUDENT)</small></div>
+        <div class="body">
+          <table class="cols">
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Tags</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-name">id</td>
+                <td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge pk">PK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">AUTO_INCREMENT</td>
+              </tr>
+              <tr><td class="c-name">full_name</td><td class="c-type">VARCHAR(150)</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes"></td></tr>
+              <tr><td class="c-name">email</td><td class="c-type">VARCHAR(150)</td>
+                <td class="c-tags"><div class="tags"><span class="badge uq">UQ</span><span class="badge nn">NN</span></div></td><td class="c-notes"></td></tr>
+              <tr><td class="c-name">phone</td><td class="c-type">VARCHAR(30)</td>
+                <td class="c-tags"><div class="tags"><span class="badge uq">UQ</span></div></td><td class="c-notes">NULL allowed</td></tr>
+              <tr><td class="c-name">password_hash</td><td class="c-type">VARCHAR(255)</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes">BCrypt</td></tr>
+              <tr><td class="c-name">role</td><td class="c-type">ENUM</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes">ADMIN, INSTRUCTOR, STUDENT</td></tr>
+              <tr><td class="c-name">status</td><td class="c-type">ENUM</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes">PENDING, ACTIVE, SUSPENDED</td></tr>
+              <tr><td class="c-name">created_at</td><td class="c-type">DATETIME</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- COURSES -->
+      <div class="entity" id="courses">
+        <div class="title">courses <small>(owned by instructor)</small></div>
+        <div class="body">
+          <table class="cols">
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Tags</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-name">id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge pk">PK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">AUTO_INCREMENT</td>
+              </tr>
+              <tr>
+                <td class="c-name">instructor_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ users.id</td>
+              </tr>
+              <tr><td class="c-name">title</td><td class="c-type">VARCHAR(200)</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes"></td></tr>
+              <tr><td class="c-name">description</td><td class="c-type">TEXT</td>
+                <td class="c-tags"><div class="tags"></div></td><td class="c-notes">NULL allowed</td></tr>
+              <tr><td class="c-name">status</td><td class="c-type">ENUM</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes">DRAFT, PUBLISHED</td></tr>
+              <tr><td class="c-name">created_at</td><td class="c-type">DATETIME</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LESSONS -->
+      <div class="entity" id="lessons">
+        <div class="title">lessons <small>(per course)</small></div>
+        <div class="body">
+          <table class="cols">
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Tags</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-name">id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge pk">PK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">AUTO_INCREMENT</td>
+              </tr>
+              <tr>
+                <td class="c-name">course_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ courses.id</td>
+              </tr>
+              <tr><td class="c-name">title</td><td class="c-type">VARCHAR(200)</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes"></td></tr>
+              <tr><td class="c-name">content_json</td><td class="c-type">LONGTEXT</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes">blocks: text/link/youtube</td></tr>
+              <tr><td class="c-name">order_index</td><td class="c-type">INT</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes"></td></tr>
+              <tr><td class="c-name">created_at</td><td class="c-type">DATETIME</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td><td class="c-notes"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ENROLLMENTS -->
+      <div class="entity" id="enrollments">
+        <div class="title">enrollments <small>(student ↔ course)</small></div>
+        <div class="body">
+          <table class="cols">
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Tags</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-name">id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge pk">PK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">AUTO_INCREMENT</td>
+              </tr>
+              <tr>
+                <td class="c-name">student_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ users.id</td>
+              </tr>
+              <tr>
+                <td class="c-name">course_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ courses.id</td>
+              </tr>
+              <tr>
+                <td class="c-name">created_at</td><td class="c-type">DATETIME</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td>
+                <td class="c-notes"></td>
+              </tr>
+              <tr>
+                <td class="c-name">__constraint</td><td class="c-type"></td>
+                <td class="c-tags"><div class="tags"><span class="badge uq">UQ</span></div></td>
+                <td class="c-notes">UNIQUE(student_id, course_id)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- LESSON_PROGRESS -->
+      <div class="entity" id="lesson_progress">
+        <div class="title">lesson_progress <small>(student ↔ lesson)</small></div>
+        <div class="body">
+          <table class="cols">
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Tags</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-name">id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge pk">PK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">AUTO_INCREMENT</td>
+              </tr>
+              <tr>
+                <td class="c-name">student_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ users.id</td>
+              </tr>
+              <tr>
+                <td class="c-name">lesson_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ lessons.id</td>
+              </tr>
+              <tr>
+                <td class="c-name">is_completed</td><td class="c-type">TINYINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">default 0</td>
+              </tr>
+              <tr>
+                <td class="c-name">completed_at</td><td class="c-type">DATETIME</td>
+                <td class="c-tags"><div class="tags"></div></td>
+                <td class="c-notes">NULL allowed</td>
+              </tr>
+              <tr>
+                <td class="c-name">last_opened_at</td><td class="c-type">DATETIME</td>
+                <td class="c-tags"><div class="tags"></div></td>
+                <td class="c-notes">NULL allowed</td>
+              </tr>
+              <tr>
+                <td class="c-name">__constraint</td><td class="c-type"></td>
+                <td class="c-tags"><div class="tags"><span class="badge uq">UQ</span></div></td>
+                <td class="c-notes">UNIQUE(student_id, lesson_id)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- QA_QUESTIONS -->
+      <div class="entity" id="qa_questions">
+        <div class="title">qa_questions <small>(student asks per lesson)</small></div>
+        <div class="body">
+          <table class="cols">
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Tags</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-name">id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge pk">PK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">AUTO_INCREMENT</td>
+              </tr>
+              <tr>
+                <td class="c-name">lesson_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ lessons.id</td>
+              </tr>
+              <tr>
+                <td class="c-name">student_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ users.id</td>
+              </tr>
+              <tr>
+                <td class="c-name">question_text</td><td class="c-type">TEXT</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td>
+                <td class="c-notes"></td>
+              </tr>
+              <tr>
+                <td class="c-name">created_at</td><td class="c-type">DATETIME</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td>
+                <td class="c-notes"></td>
+              </tr>
+              <tr>
+                <td class="c-name">status</td><td class="c-type">ENUM</td>
+                <td class="c-tags"><div class="tags"><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">OPEN, ANSWERED</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- QA_ANSWERS -->
+      <div class="entity" id="qa_answers">
+        <div class="title">qa_answers <small>(instructor answers 1:1)</small></div>
+        <div class="body">
+          <table class="cols">
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Tags</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="c-name">id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge pk">PK</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">AUTO_INCREMENT</td>
+              </tr>
+              <tr>
+                <td class="c-name">question_id</td><td class="c-type">BIGINT</td>
+                <td class="c-tags"><div class="tags"><span class="badge fk">FK</span><span class="badge uq">UQ</span><span class="badge nn">NN</span></div></td>
+                <td class="c-notes">→ qa_questions.id (1 question → 1 answer)</td>
+              </tr>
+              <tr>
